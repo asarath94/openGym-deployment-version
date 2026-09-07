@@ -43,7 +43,7 @@ import {
 
 /* ---------- configuration ---------- */
 
-const API_PORT = +(process.env.API_PORT || 3000);
+const PORT = +(process.env.PORT || 3000);
 
 const RP_ID = process.env.RP_ID || "localhost";
 const ORIGIN = process.env.ORIGIN || "http://localhost:8080";
@@ -1408,10 +1408,8 @@ async function start() {
 
     process.on("SIGINT", () => void shutdown("SIGINT"));
 
-    server.listen(API_PORT, "127.0.0.1", () => {
-      console.log(
-        `gym-api on :${API_PORT} ` + `(rpID=${RP_ID}, origin=${ORIGIN})`,
-      );
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`gym-api on :${PORT} ` + `(rpID=${RP_ID}, origin=${ORIGIN})`);
     });
   } catch (e) {
     console.error("failed to start API", e);

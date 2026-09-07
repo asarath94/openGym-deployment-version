@@ -1,0 +1,62 @@
+services:
+  - type: web
+    name: opengym
+    runtime: docker
+
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+    healthCheckPath: /api/health
+
+    envVars:
+      # Render public HTTP port.
+      # nginx listens on this port inside the container.
+      - key: PORT
+        value: "80"
+
+      # MongoDB Atlas
+      - key: MONGODB_URI
+        sync: false
+
+      - key: MONGODB_DB
+        value: opengym
+
+      # WebAuthn / Passkeys
+      #
+      # Set these in Render to the final public hostname.
+      #
+      # Example:
+      # RP_ID=gym.onrender.com
+      # ORIGIN=https://gym.onrender.com
+      - key: RP_ID
+        sync: false
+
+      - key: ORIGIN
+        sync: false
+
+      - key: RP_NAME
+        value: openGym
+
+      # Session security
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # Web Push / VAPID
+      - key: VAPID_SUBJECT
+        sync: false
+
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
+      # Application settings
+      - key: SESSION_DAYS
+        value: "90"
+
+      - key: INVITE_ONLY
+        value: "false"
+
+      - key: ADMIN_UIDS
+        value: ""

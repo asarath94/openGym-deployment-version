@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+
+media/img/
+media/gif/

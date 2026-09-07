@@ -303,72 +303,67 @@ function userNow(tz) {
  * the service is asleep. We will address that deployment limitation
  * separately later.
  */
-setInterval(async () => {
-  try {
-    const users = await getUsers();
+function startReminderLoop() {
+  setInterval(async () => {
+    try {
+      const users = await getUsers();
 
-    for (const user of users) {
-      if (!(await hasSubscription(user.id))) {
-        continue;
+      for (const user of users) {
+        if (!(await hasSubscription(user.id))) {
+          continue;
+        }
+
+        const S = await getUserState(user.id);
+
+        if (!S?.reminder?.on) {
+          continue;
+        }
+
+        const now = userNow(S.reminder.tz || "UTC");
+
+        if (!now) {
+          continue;
+        }
+
+        if (S.reminder.time !== now.hhmm) {
+          continue;
+        }
+
+        if (user.lastReminder === now.date) {
+          continue;
+        }
+
+        if ((S.workouts || []).some((workout) => workout.d === now.date)) {
+          continue;
+        }
+
+        const rid = effectiveRoutineId(S, now.date);
+
+        if (!rid) {
+          continue;
+        }
+
+        const routine = (S.routines || []).find((r) => r.id === rid);
+
+        console.log("reminder firing", user.id, rid);
+
+        await updateUserFields(user.id, {
+          lastReminder: now.date,
+        });
+
+        await sendPush(user.id, {
+          title: routine
+            ? `${routine.emoji || "🏋️"} ${routine.name} today`
+            : "Workout planned today",
+          body: "It's on your plan — let's go 💪",
+          tag: "day-reminder",
+        });
       }
-
-      const S = await getUserState(user.id);
-
-      if (!S?.reminder?.on) {
-        continue;
-      }
-
-      const now = userNow(S.reminder.tz || "UTC");
-
-      if (!now) {
-        continue;
-      }
-
-      if (S.reminder.time !== now.hhmm) {
-        continue;
-      }
-
-      if (user.lastReminder === now.date) {
-        continue;
-      }
-
-      if ((S.workouts || []).some((workout) => workout.d === now.date)) {
-        continue;
-      }
-
-      const rid = effectiveRoutineId(S, now.date);
-
-      /*
-       * Rest day — nothing to remind the user about.
-       */
-      if (!rid) {
-        continue;
-      }
-
-      const routine = (S.routines || []).find((r) => r.id === rid);
-
-      console.log("reminder firing", user.id, rid);
-
-      /*
-       * Update the reminder marker in MongoDB so the reminder
-       * isn't sent repeatedly during the same minute/day.
-       */
-      await updateUserFields(user.id, {
-        lastReminder: now.date,
-      });
-
-      await sendPush(user.id, {
-        title: routine
-          ? `${routine.emoji || "🏋️"} ${routine.name} today`
-          : "Workout planned today",
-        body: "It's on your plan — let's go 💪",
-        tag: "day-reminder",
-      });
+    } catch (e) {
+      console.error("reminder loop failed", e);
     }
-  } catch (e) {
-    console.error("reminder loop failed", e);
-  }
-}, 10000).unref();
+  }, 10000).unref();
+}
 
 /* ---------- sessions ---------- */
 
@@ -1365,6 +1360,7 @@ const routes = {
 async function start() {
   try {
     await initStorage();
+    startReminderLoop();
 
     const server = http.createServer(async (req, res) => {
       const url = new URL(req.url, "http://x");
